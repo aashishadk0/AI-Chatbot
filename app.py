@@ -102,6 +102,106 @@ st.markdown("""
         margin: 10px auto 10px 0;
         max-width: 70%;
     }
+            
+            .chat-header {
+    background: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+}
+
+.chat-header h3 {
+    margin: 0;
+    color: #e5e7eb !important;
+}
+
+.chat-header p {
+    margin: 5px 0 0 0;
+    color: #94a3b8 !important;
+    font-size: 14px;
+}
+
+.chat-header span {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.chat-wrapper {
+    background: #020617;
+    border: 1px solid #1e293b;
+    border-radius: 18px;
+    padding: 24px;
+    min-height: 60vh;
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.assistant-row,
+.user-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.user-row {
+    justify-content: flex-end;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.bot-avatar {
+    background: #1e293b;
+    color: #22c55e;
+    border: 1px solid #334155;
+}
+
+.user-avatar {
+    background: #22c55e;
+    color: #020617;
+}
+
+.message {
+    padding: 14px 16px;
+    border-radius: 16px;
+    max-width: 75%;
+    line-height: 1.6;
+    font-size: 15px;
+}
+
+.bot-message {
+    background: #111827;
+    color: #e5e7eb;
+    border: 1px solid #1f2937;
+    border-top-left-radius: 4px;
+}
+
+.user-message {
+    background: #22c55e;
+    color: #020617;
+    border-top-right-radius: 4px;
+    font-weight: 500;
+}
+
+.chat-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-wrapper::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 20px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -203,44 +303,76 @@ def chatbot_page():
             if "messages" not in st.session_state:
                 st.session_state["messages"] = []
 
-            st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="chat-header">
+        <div>
+            <h3>Chat with PDF</h3>
+            <p>Selected document: <span>{selected_pdf}</span></p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-            if not st.session_state["messages"]:
-                st.markdown("""
-                <div class='bot-msg'>
-                    PDF selected. Now ask questions from this document.
+    st.markdown("<div class='chat-wrapper'>", unsafe_allow_html=True)
+
+    if not st.session_state["messages"]:
+        st.markdown("""
+        <div class="assistant-row">
+            <div class="avatar bot-avatar">AI</div>
+            <div class="message bot-message">
+                Hello! Ask me anything from your selected PDF.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    for msg in st.session_state["messages"]:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div class="user-row">
+                <div class="message user-message">
+                    {msg["content"]}
                 </div>
-                """, unsafe_allow_html=True)
+                <div class="avatar user-avatar">U</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="assistant-row">
+                <div class="avatar bot-avatar">AI</div>
+                <div class="message bot-message">
+                    {msg["content"]}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            for msg in st.session_state["messages"]:
-                if msg["role"] == "user":
-                    st.markdown(f"<div class='user-msg'>{msg['content']}</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div class='bot-msg'>{msg['content']}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown("</div>", unsafe_allow_html=True)
+    question = st.chat_input("Ask a question from the selected PDF...")
 
-            question = st.chat_input("Ask a question from the selected PDF...")
+    if question:
+        st.session_state["messages"].append({
+            "role": "user",
+            "content": question
+        })
 
-            if question:
-                with st.spinner("Retrieving relevant chunks and generating answer..."):
-                    create_vector_store(selected_pdf, chunks)
+        with st.spinner("Thinking..."):
+            create_vector_store(selected_pdf, chunks)
 
-                    retrieved_chunks = retrieve_chunks(
-                        selected_pdf,
-                        question,
-                        top_k=3
-                    )
+            retrieved_chunks = retrieve_chunks(
+                selected_pdf,
+                question,
+                top_k=3
+            )
 
-                    st.session_state["retrieved_chunks"] = retrieved_chunks
+            st.session_state["retrieved_chunks"] = retrieved_chunks
 
-                    answer = generate_answer(question, retrieved_chunks)
+            answer = generate_answer(question, retrieved_chunks)
 
-                st.session_state["messages"].append({
-                    "role": "assistant",
-                    "content": answer
-                })
-                st.rerun()
+        st.session_state["messages"].append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        st.rerun()
 
         with tab2:
             st.subheader("Parsed PDF Content")
